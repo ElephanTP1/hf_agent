@@ -1,0 +1,14 @@
+[project]
+name = "hf-agent"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "langchain-community>=0.3.27",
+    "langchain-ollama>=0.3.6",
+    "langsmith>=0.4.8",
+    "ollama>=0.5.1",
+    "pytz>=2025.2",
+    "smolagents>=1.20.0",
+]
