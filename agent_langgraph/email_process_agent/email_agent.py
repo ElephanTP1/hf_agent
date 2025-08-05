@@ -11,12 +11,11 @@ from enum import Enum
 
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler()
-    ]
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    handlers=[logging.StreamHandler()],
 )
 logger = logging.getLogger(__name__)
+
 
 # Enums for better type safety
 class EmailCategory(str, Enum):
@@ -28,11 +27,13 @@ class EmailCategory(str, Enum):
     URGENT = "urgent"
     UNKNOWN = "unknown"
 
+
 class PriorityLevel(str, Enum):
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"
     URGENT = "urgent"
+
 
 class ResponseTone(str, Enum):
     FORMAL = "formal"
@@ -40,49 +41,74 @@ class ResponseTone(str, Enum):
     URGENT = "urgent"
     DIPLOMATIC = "diplomatic"
 
+
 # Pydantic models for structured outputs
 class EmailAnalysis(BaseModel):
     """Structured output for email analysis."""
+
     is_spam: bool = Field(description="Whether the email is spam")
-    spam_confidence: float = Field(ge=0.0, le=1.0, description="Confidence score for spam detection")
+    spam_confidence: float = Field(
+        ge=0.0, le=1.0, description="Confidence score for spam detection"
+    )
     spam_reason: Optional[str] = Field(description="Reason if classified as spam")
     category: EmailCategory = Field(description="Email category classification")
-    priority: PriorityLevel = Field(description="Priority level for Mr. Wayne's attention")
-    requires_batman: bool = Field(description="Whether this requires Batman's immediate attention")
+    priority: PriorityLevel = Field(
+        description="Priority level for Mr. Wayne's attention"
+    )
+    requires_batman: bool = Field(
+        description="Whether this requires Batman's immediate attention"
+    )
     tone_needed: ResponseTone = Field(description="Appropriate response tone")
     key_points: List[str] = Field(description="Key points from the email content")
 
-    @field_validator('spam_reason')
+    @field_validator("spam_reason")
     @classmethod
     def spam_reason_required_if_spam(cls, v, info):
         # Get the values from the validation context
-        if hasattr(info, 'data') and info.data.get('is_spam') and not v:
-            raise ValueError('spam_reason is required when is_spam is True')
+        if hasattr(info, "data") and info.data.get("is_spam") and not v:
+            raise ValueError("spam_reason is required when is_spam is True")
         return v
+
 
 class ResponseDraft(BaseModel):
     """Structured output for response drafting."""
+
     draft_content: str = Field(description="The drafted response content")
     estimated_reading_time: int = Field(description="Estimated reading time in seconds")
-    key_actions_required: List[str] = Field(description="Actions Mr. Wayne might need to take")
+    key_actions_required: List[str] = Field(
+        description="Actions Mr. Wayne might need to take"
+    )
     follow_up_needed: bool = Field(description="Whether follow-up is likely needed")
     urgency_note: Optional[str] = Field(description="Special urgency notes if any")
 
+
 class ThreatAssessment(BaseModel):
     """Structured output for threat assessment."""
-    threat_level: Literal["low", "medium", "high", "critical"] = Field(description="Assessed threat level")
+
+    threat_level: Literal["low", "medium", "high", "critical"] = Field(
+        description="Assessed threat level"
+    )
     threat_type: List[str] = Field(description="Types of threats identified")
     immediate_actions: List[str] = Field(description="Immediate actions recommended")
     security_protocols: List[str] = Field(description="Security protocols to activate")
-    batman_involvement: bool = Field(description="Whether Batman should be directly involved")
+    batman_involvement: bool = Field(
+        description="Whether Batman should be directly involved"
+    )
+
 
 class ProcessingSummary(BaseModel):
     """Structured output for processing summary."""
+
     total_steps: int = Field(description="Total processing steps completed")
-    processing_time_estimate: float = Field(description="Estimated processing time in seconds")
-    confidence_score: float = Field(ge=0.0, le=1.0, description="Overall confidence in processing")
+    processing_time_estimate: float = Field(
+        description="Estimated processing time in seconds"
+    )
+    confidence_score: float = Field(
+        ge=0.0, le=1.0, description="Overall confidence in processing"
+    )
     recommendations: List[str] = Field(description="Recommendations for Mr. Wayne")
     next_actions: List[str] = Field(description="Suggested next actions")
+
 
 # Enhanced state with Pydantic integration
 class EmailState(TypedDict):
@@ -107,6 +133,7 @@ class EmailState(TypedDict):
     processing_steps: List[str]
     errors: List[str]
 
+
 class EmailAgent:
     def __init__(self):
         self.model = OllamaLLM()
@@ -116,7 +143,7 @@ class EmailAgent:
             "spam_detected": 0,
             "high_priority": 0,
             "batman_alerts": 0,
-            "parsing_errors": 0
+            "parsing_errors": 0,
         }
 
         # Initialize structured output chains
@@ -132,7 +159,9 @@ class EmailAgent:
         """Setup tools with access to class instance."""
 
         @tool
-        def analyze_email_structured(sender: str, subject: str, body: str) -> Dict[str, Any]:
+        def analyze_email_structured(
+                sender: str, subject: str, body: str
+        ) -> Dict[str, Any]:
             """Analyze email using structured Pydantic output."""
             analysis_prompt = f"""
 As Alfred, Batman's loyal butler, analyze this email comprehensively:
@@ -152,17 +181,20 @@ Consider:
 """
 
             try:
-                analysis = self.analysis_chain.invoke([
-                    SystemMessage(content="You are Alfred Pennyworth, Batman's butler. Analyze emails professionally and thoroughly."),
-                    HumanMessage(content=analysis_prompt)
-                ])
+                analysis = self.analysis_chain.invoke(
+                    [
+                        SystemMessage(
+                            content="You are Alfred Pennyworth, Batman's butler. Analyze emails professionally and thoroughly."
+                        ),
+                        HumanMessage(content=analysis_prompt),
+                    ]
+                )
 
-                logger.info(f"✅ Successfully parsed email analysis: {analysis.category.value} - {analysis.priority.value} priority")
+                logger.info(
+                    f"✅ Successfully parsed email analysis: {analysis.category.value} - {analysis.priority.value} priority"
+                )
 
-                return {
-                    "analysis": analysis,
-                    "success": True
-                }
+                return {"analysis": analysis, "success": True}
 
             except Exception as e:
                 logger.error(f"❌ Failed to parse structured analysis: {e}")
@@ -170,27 +202,38 @@ Consider:
                 return {
                     "analysis": self._fallback_analysis(sender, subject, body),
                     "success": False,
-                    "error": str(e)
+                    "error": str(e),
                 }
 
         @tool
-        def draft_response_structured(analysis_dict: Dict[str, Any], sender: str, subject: str, body: str) -> Dict[str, Any]:
+        def draft_response_structured(
+                analysis_dict: Dict[str, Any], sender: str, subject: str, body: str
+        ) -> Dict[str, Any]:
             """Draft response using structured Pydantic output."""
             # Convert dict back to EmailAnalysis if needed
             if isinstance(analysis_dict, dict):
                 try:
                     analysis = EmailAnalysis(**analysis_dict)
-                except:
+                except Exception as e:
+                    logger.info(f"Draft response failed with error {e}")
                     # If conversion fails, use the dict directly
                     analysis = analysis_dict
             else:
                 analysis = analysis_dict
 
             # Get values safely
-            category = getattr(analysis, 'category', analysis_dict.get('category', 'unknown'))
-            priority = getattr(analysis, 'priority', analysis_dict.get('priority', 'medium'))
-            tone_needed = getattr(analysis, 'tone_needed', analysis_dict.get('tone_needed', 'formal'))
-            key_points = getattr(analysis, 'key_points', analysis_dict.get('key_points', []))
+            category = getattr(
+                analysis, "category", analysis_dict.get("category", "unknown")
+            )
+            priority = getattr(
+                analysis, "priority", analysis_dict.get("priority", "medium")
+            )
+            tone_needed = getattr(
+                analysis, "tone_needed", analysis_dict.get("tone_needed", "formal")
+            )
+            key_points = getattr(
+                analysis, "key_points", analysis_dict.get("key_points", [])
+            )
 
             draft_prompt = f"""
 As Alfred the butler, draft a response to this email based on the analysis:
@@ -204,7 +247,7 @@ Analysis Results:
 - Category: {category}
 - Priority: {priority}
 - Tone needed: {tone_needed}
-- Key points: {', '.join(key_points) if key_points else 'None'}
+- Key points: {", ".join(key_points) if key_points else "None"}
 
 Draft a response and provide metadata about it including:
 - The drafted response content
@@ -215,17 +258,20 @@ Draft a response and provide metadata about it including:
 """
 
             try:
-                draft_info = self.draft_chain.invoke([
-                    SystemMessage(content="You are Alfred Pennyworth. Create a professional response and provide structured metadata."),
-                    HumanMessage(content=draft_prompt)
-                ])
+                draft_info = self.draft_chain.invoke(
+                    [
+                        SystemMessage(
+                            content="You are Alfred Pennyworth. Create a professional response and provide structured metadata."
+                        ),
+                        HumanMessage(content=draft_prompt),
+                    ]
+                )
 
-                logger.info(f"✅ Successfully drafted {tone_needed} response ({draft_info.estimated_reading_time}s read time)")
+                logger.info(
+                    f"✅ Successfully drafted {tone_needed} response ({draft_info.estimated_reading_time}s read time)"
+                )
 
-                return {
-                    "draft_info": draft_info,
-                    "success": True
-                }
+                return {"draft_info": draft_info, "success": True}
 
             except Exception as e:
                 logger.error(f"❌ Failed to parse structured draft: {e}")
@@ -233,24 +279,31 @@ Draft a response and provide metadata about it including:
                 return {
                     "draft_info": self._fallback_draft(analysis, sender),
                     "success": False,
-                    "error": str(e)
+                    "error": str(e),
                 }
 
         @tool
-        def assess_threat_structured(analysis_dict: Dict[str, Any], sender: str, body: str) -> Dict[str, Any]:
+        def assess_threat_structured(
+                analysis_dict: Dict[str, Any], sender: str, body: str
+        ) -> Dict[str, Any]:
             """Assess threats using structured Pydantic output."""
             # Convert dict back to EmailAnalysis if needed
             if isinstance(analysis_dict, dict):
                 try:
                     analysis = EmailAnalysis(**analysis_dict)
-                except:
+                except Exception as e:
+                    logger.info(f"Threat response failed with error {e}")
                     analysis = analysis_dict
             else:
                 analysis = analysis_dict
 
             # Get values safely
-            category = getattr(analysis, 'category', analysis_dict.get('category', 'unknown'))
-            requires_batman = getattr(analysis, 'requires_batman', analysis_dict.get('requires_batman', False))
+            category = getattr(
+                analysis, "category", analysis_dict.get("category", "unknown")
+            )
+            requires_batman = getattr(
+                analysis, "requires_batman", analysis_dict.get("requires_batman", False)
+            )
 
             threat_prompt = f"""
 As Alfred, assess the threat level of this email:
@@ -269,24 +322,27 @@ Provide a detailed threat assessment including:
 """
 
             try:
-                threat_assessment = self.threat_chain.invoke([
-                    SystemMessage(content="You are Alfred Pennyworth, providing security threat assessment."),
-                    HumanMessage(content=threat_prompt)
-                ])
+                threat_assessment = self.threat_chain.invoke(
+                    [
+                        SystemMessage(
+                            content="You are Alfred Pennyworth, providing security threat assessment."
+                        ),
+                        HumanMessage(content=threat_prompt),
+                    ]
+                )
 
-                logger.info(f"🛡️ Threat assessment: {threat_assessment.threat_level} level")
+                logger.info(
+                    f"🛡️ Threat assessment: {threat_assessment.threat_level} level"
+                )
 
-                return {
-                    "threat_assessment": threat_assessment,
-                    "success": True
-                }
+                return {"threat_assessment": threat_assessment, "success": True}
 
             except Exception as e:
                 logger.error(f"❌ Failed to parse threat assessment: {e}")
                 return {
                     "threat_assessment": self._fallback_threat_assessment(),
                     "success": False,
-                    "error": str(e)
+                    "error": str(e),
                 }
 
         # Store tools as instance attributes
@@ -299,11 +355,32 @@ Provide a detailed threat assessment including:
         body_lower = body.lower()
         subject_lower = subject.lower()
 
-        spam_keywords = ["investment", "crypto", "bitcoin", "make money", "click here", "winner", "urgent money"]
-        threat_keywords = ["kill", "revenge", "destroy", "bomb", "threat", "hurt", "found you", "secret"]
+        spam_keywords = [
+            "investment",
+            "crypto",
+            "bitcoin",
+            "make money",
+            "click here",
+            "winner",
+            "urgent money",
+        ]
+        threat_keywords = [
+            "kill",
+            "revenge",
+            "destroy",
+            "bomb",
+            "threat",
+            "hurt",
+            "found you",
+            "secret",
+        ]
 
-        is_spam = any(keyword in body_lower + subject_lower for keyword in spam_keywords)
-        is_threat = any(keyword in body_lower + subject_lower for keyword in threat_keywords)
+        is_spam = any(
+            keyword in body_lower + subject_lower for keyword in spam_keywords
+        )
+        is_threat = any(
+            keyword in body_lower + subject_lower for keyword in threat_keywords
+        )
 
         if is_threat:
             category = EmailCategory.THREAT
@@ -329,7 +406,7 @@ Provide a detailed threat assessment including:
             priority=priority,
             requires_batman=requires_batman,
             tone_needed=tone,
-            key_points=["Fallback analysis used", f"Sender: {sender}"]
+            key_points=["Fallback analysis used", f"Sender: {sender}"],
         )
 
     def _fallback_draft(self, analysis: Any, sender: str) -> ResponseDraft:
@@ -341,7 +418,7 @@ Provide a detailed threat assessment including:
             estimated_reading_time=10,
             key_actions_required=["Review message", "Decide on response"],
             follow_up_needed=False,
-            urgency_note=None
+            urgency_note=None,
         )
 
     def _fallback_threat_assessment(self) -> ThreatAssessment:
@@ -351,24 +428,30 @@ Provide a detailed threat assessment including:
             threat_type=["Unknown"],
             immediate_actions=["Review manually"],
             security_protocols=["Standard monitoring"],
-            batman_involvement=False
+            batman_involvement=False,
         )
 
     def analyze_email_node(self, state: EmailState) -> EmailState:
         """Node for structured email analysis."""
         # Use the tool properly with .invoke()
-        result = self.analyze_email_tool.invoke({
-            "sender": state["sender"],
-            "subject": state["subject"],
-            "body": state["body"]
-        })
+        result = self.analyze_email_tool.invoke(
+            {
+                "sender": state["sender"],
+                "subject": state["subject"],
+                "body": state["body"],
+            }
+        )
 
         processing_steps = state.get("processing_steps", [])
-        processing_steps.append(f"Analyzed email using {'structured' if result['success'] else 'fallback'} parser")
+        processing_steps.append(
+            f"Analyzed email using {'structured' if result['success'] else 'fallback'} parser"
+        )
 
         errors = state.get("errors", [])
         if not result["success"]:
-            errors.append(f"Analysis parsing failed: {result.get('error', 'Unknown error')}")
+            errors.append(
+                f"Analysis parsing failed: {result.get('error', 'Unknown error')}"
+            )
 
         analysis = result["analysis"]
 
@@ -377,7 +460,7 @@ Provide a detailed threat assessment including:
             "analysis": analysis,
             "is_spam": analysis.is_spam,  # For legacy compatibility
             "processing_steps": processing_steps,
-            "errors": errors
+            "errors": errors,
         }
 
     def draft_response_node(self, state: EmailState) -> EmailState:
@@ -385,21 +468,31 @@ Provide a detailed threat assessment including:
         analysis = state["analysis"]
 
         # Convert Pydantic model to dict for tool input
-        analysis_dict = analysis.model_dump() if hasattr(analysis, 'model_dump') else analysis.dict()
+        analysis_dict = (
+            analysis.model_dump()
+            if hasattr(analysis, "model_dump")
+            else analysis.dict()
+        )
 
-        result = self.draft_response_tool.invoke({
-            "analysis_dict": analysis_dict,
-            "sender": state["sender"],
-            "subject": state["subject"],
-            "body": state["body"]
-        })
+        result = self.draft_response_tool.invoke(
+            {
+                "analysis_dict": analysis_dict,
+                "sender": state["sender"],
+                "subject": state["subject"],
+                "body": state["body"],
+            }
+        )
 
         processing_steps = state.get("processing_steps", [])
-        processing_steps.append(f"Drafted response using {'structured' if result['success'] else 'fallback'} parser")
+        processing_steps.append(
+            f"Drafted response using {'structured' if result['success'] else 'fallback'} parser"
+        )
 
         errors = state.get("errors", [])
         if not result["success"]:
-            errors.append(f"Draft parsing failed: {result.get('error', 'Unknown error')}")
+            errors.append(
+                f"Draft parsing failed: {result.get('error', 'Unknown error')}"
+            )
 
         draft_info = result["draft_info"]
 
@@ -408,7 +501,7 @@ Provide a detailed threat assessment including:
             "draft_info": draft_info,
             "email_draft": draft_info.draft_content,  # For legacy compatibility
             "processing_steps": processing_steps,
-            "errors": errors
+            "errors": errors,
         }
 
     def threat_assessment_node(self, state: EmailState) -> EmailState:
@@ -416,33 +509,43 @@ Provide a detailed threat assessment including:
         analysis = state["analysis"]
 
         # Convert Pydantic model to dict for tool input
-        analysis_dict = analysis.model_dump() if hasattr(analysis, 'model_dump') else analysis.dict()
+        analysis_dict = (
+            analysis.model_dump()
+            if hasattr(analysis, "model_dump")
+            else analysis.dict()
+        )
 
-        result = self.assess_threat_tool.invoke({
-            "analysis_dict": analysis_dict,
-            "sender": state["sender"],
-            "body": state["body"]
-        })
+        result = self.assess_threat_tool.invoke(
+            {
+                "analysis_dict": analysis_dict,
+                "sender": state["sender"],
+                "body": state["body"],
+            }
+        )
 
         processing_steps = state.get("processing_steps", [])
-        processing_steps.append(f"Assessed threats using {'structured' if result['success'] else 'fallback'} parser")
+        processing_steps.append(
+            f"Assessed threats using {'structured' if result['success'] else 'fallback'} parser"
+        )
 
         errors = state.get("errors", [])
         if not result["success"]:
-            errors.append(f"Threat assessment parsing failed: {result.get('error', 'Unknown error')}")
+            errors.append(
+                f"Threat assessment parsing failed: {result.get('error', 'Unknown error')}"
+            )
 
         return {
             **state,
             "threat_assessment": result["threat_assessment"],
             "processing_steps": processing_steps,
-            "errors": errors
+            "errors": errors,
         }
 
     def handle_spam_node(self, state: EmailState) -> EmailState:
         """Handle spam with structured logging."""
         analysis = state["analysis"]
 
-        logger.info(f"🚫 SPAM DETECTED")
+        logger.info("🚫 SPAM DETECTED")
         logger.info(f"   Sender: {state['sender']}")
         logger.info(f"   Confidence: {analysis.spam_confidence:.2f}")
         logger.info(f"   Reason: {analysis.spam_reason}")
@@ -451,12 +554,11 @@ Provide a detailed threat assessment including:
         self.processing_stats["spam_detected"] += 1
 
         processing_steps = state.get("processing_steps", [])
-        processing_steps.append(f"Handled as spam (confidence: {analysis.spam_confidence:.2f})")
+        processing_steps.append(
+            f"Handled as spam (confidence: {analysis.spam_confidence:.2f})"
+        )
 
-        return {
-            **state,
-            "processing_steps": processing_steps
-        }
+        return {**state, "processing_steps": processing_steps}
 
     def create_processing_summary_node(self, state: EmailState) -> EmailState:
         """Create final processing summary."""
@@ -490,7 +592,7 @@ Provide a detailed threat assessment including:
             processing_time_estimate=2.5,  # Estimated
             confidence_score=confidence,
             recommendations=recommendations or ["Standard email handling"],
-            next_actions=next_actions or ["Review and respond as appropriate"]
+            next_actions=next_actions or ["Review and respond as appropriate"],
         )
 
         processing_steps = state.get("processing_steps", [])
@@ -499,7 +601,7 @@ Provide a detailed threat assessment including:
         return {
             **state,
             "processing_summary": summary,
-            "processing_steps": processing_steps
+            "processing_steps": processing_steps,
         }
 
     def notify_mr_wayne_structured(self, state: EmailState) -> EmailState:
@@ -527,33 +629,35 @@ Provide a detailed threat assessment including:
         logger.info(f"Received: {state['received_at']}")
 
         # Analysis results
-        logger.info(f"\n📊 ANALYSIS RESULTS:")
+        logger.info("\n📊 ANALYSIS RESULTS:")
         logger.info(f"   Category: {analysis.category.value.upper()}")
         logger.info(f"   Priority: {analysis.priority.value.upper()}")
         logger.info(f"   Spam Confidence: {analysis.spam_confidence:.2f}")
         logger.info(f"   Key Points: {', '.join(analysis.key_points)}")
 
         if analysis.requires_batman:
-            logger.info(f"🦇 BATMAN ALERT: Immediate attention required!")
+            logger.info("🦇 BATMAN ALERT: Immediate attention required!")
 
         # Threat assessment
         if threat_assessment:
-            logger.info(f"\n🛡️ THREAT ASSESSMENT:")
+            logger.info("\n🛡️ THREAT ASSESSMENT:")
             logger.info(f"   Level: {threat_assessment.threat_level.upper()}")
             logger.info(f"   Types: {', '.join(threat_assessment.threat_type)}")
             logger.info(f"   Actions: {', '.join(threat_assessment.immediate_actions)}")
 
         # Draft info
         if draft_info:
-            logger.info(f"\n✍️ RESPONSE DRAFT:")
+            logger.info("\n✍️ RESPONSE DRAFT:")
             logger.info(f"   Reading Time: {draft_info.estimated_reading_time}s")
-            logger.info(f"   Follow-up Needed: {'Yes' if draft_info.follow_up_needed else 'No'}")
+            logger.info(
+                f"   Follow-up Needed: {'Yes' if draft_info.follow_up_needed else 'No'}"
+            )
             logger.info("-" * 50)
             logger.info(draft_info.draft_content)
 
         # Processing summary
         if summary:
-            logger.info(f"\n📋 PROCESSING SUMMARY:")
+            logger.info("\n📋 PROCESSING SUMMARY:")
             logger.info(f"   Steps Completed: {summary.total_steps}")
             logger.info(f"   Confidence: {summary.confidence_score:.2f}")
             logger.info(f"   Recommendations: {', '.join(summary.recommendations)}")
@@ -562,7 +666,7 @@ Provide a detailed threat assessment including:
         # Errors if any
         errors = state.get("errors", [])
         if errors:
-            logger.info(f"\n⚠️ PROCESSING ERRORS:")
+            logger.info("\n⚠️ PROCESSING ERRORS:")
             for error in errors:
                 logger.info(f"   • {error}")
 
@@ -601,8 +705,8 @@ Provide a detailed threat assessment including:
             {
                 "spam": "handle_spam",
                 "threat": "assess_threat",
-                "legitimate": "draft_response"
-            }
+                "legitimate": "draft_response",
+            },
         )
 
         # Spam path
@@ -640,7 +744,7 @@ Provide a detailed threat assessment including:
             email_draft=None,
             messages=[],
             processing_steps=[f"Email received from {email['sender']}"],
-            errors=[]
+            errors=[],
         )
 
         try:
@@ -654,8 +758,11 @@ Provide a detailed threat assessment including:
     def get_stats_with_errors(self) -> Dict[str, Any]:
         """Get processing statistics including parsing errors."""
         stats = self.processing_stats.copy()
-        stats["parsing_success_rate"] = 1.0 - (stats["parsing_errors"] / max(stats["total_processed"], 1))
+        stats["parsing_success_rate"] = 1.0 - (
+                stats["parsing_errors"] / max(stats["total_processed"], 1)
+        )
         return stats
+
 
 if __name__ == "__main__":
     agent = EmailAgent()
@@ -665,29 +772,29 @@ if __name__ == "__main__":
         {
             "sender": "Joker",
             "subject": "Found you Batman!",
-            "body": "Mr. Wayne, I found your secret identity! I know you're Batman! I'm coming for revenge. You can't hide from me!"
+            "body": "Mr. Wayne, I found your secret identity! I know you're Batman! I'm coming for revenge. You can't hide from me!",
         },
         {
             "sender": "spam@crypto.com",
             "subject": "🚀 Make $10,000 TODAY! 🚀",
-            "body": "Mr Wayne, invest in my new crypto coin! Guaranteed returns! Click here to become rich!"
+            "body": "Mr Wayne, invest in my new crypto coin! Guaranteed returns! Click here to become rich!",
         },
         {
             "sender": "Lucius Fox",
             "subject": "Wayne Enterprises Board Meeting",
-            "body": "Bruce, the board meeting is scheduled for tomorrow at 2 PM. Please review the quarterly reports I sent earlier."
-        }
+            "body": "Bruce, the board meeting is scheduled for tomorrow at 2 PM. Please review the quarterly reports I sent earlier.",
+        },
     ]
 
-    logger.info('🤵 Alfred Structured Email Processing System')
-    logger.info('=' * 60)
+    logger.info("🤵 Alfred Structured Email Processing System")
+    logger.info("=" * 60)
 
     for i, email in enumerate(test_emails, 1):
-        logger.info(f'\n📧 Processing Email {i}/{len(test_emails)}')
+        logger.info(f"\n📧 Processing Email {i}/{len(test_emails)}")
         agent.process_email(email)
 
     # Show final statistics
     stats = agent.get_stats_with_errors()
-    logger.info('\n📊 FINAL PROCESSING STATISTICS:')
+    logger.info("\n📊 FINAL PROCESSING STATISTICS:")
     for key, value in stats.items():
         logger.info(f"   {key.replace('_', ' ').title()}: {value}")
